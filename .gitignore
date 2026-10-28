@@ -1,0 +1,25 @@
+# Dependências e artefatos de build
+node_modules/
+dist/
+.vite/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Cobertura, caches e informações de build
+coverage/
+*.tsbuildinfo
+
+# Arquivos locais de deploy
+.vercel/
+
+# Logs e arquivos do sistema operacional
+*.log
+.DS_Store
+Thumbs.db
+
+# Configurações locais de editores
+.vscode/
+.idea/
