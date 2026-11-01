@@ -9,7 +9,7 @@ function Pump({ id, plant }: { id: PumpId; plant: PlantState }) {
   return (
     <div className={`pump-unit ${active ? 'running' : ''}`}>
       <div className="pump-icon"><span>◉</span></div>
-      <div><strong>Bomba {id}</strong><p>{isLead ? 'Principal da semana' : 'Reserva da semana'}</p><small>{active ? (pump.noFlow ? 'Ligada sem vazão' : 'Recalque ativo') : !pump.available ? 'Indisponível' : pump.startFailure ? 'Falha de partida' : 'Desligada'}</small></div>
+      <div><strong>Bomba {id}</strong><p>{isLead ? 'Principal da semana' : 'Reserva da semana'}</p><small>{active ? (pump.noFlow ? 'Ligada sem vazão' : 'Recalque ativo') : !pump.available ? 'Indisponível' : pump.startFailure ? 'Falha de partida' : 'Desligada'}</small><small>Relé B{id}: {active ? 'energizado' : 'desenergizado'} · Contator K{id}: {active ? 'fechado' : 'aberto'}</small></div>
       <div className="ml-auto text-right text-xs text-slate-400"><b className="block text-slate-100">{pump.runHours.toFixed(1)} h</b>{pump.starts} partidas</div>
     </div>
   );

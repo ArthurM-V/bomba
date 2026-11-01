@@ -25,6 +25,8 @@ export interface SimulationSettings {
   lowerBlockLevel: number;
   lowerRecoveryLevel: number;
   upperAlarmLevel: number;
+  testDurationHours: number;
+  testIntervalHours: number;
 }
 
 export interface HistoryPoint {
@@ -32,6 +34,10 @@ export interface HistoryPoint {
   lowerLevel: number;
   upperLevel: number;
   activePump: PumpId | null;
+  pump1RunHours: number;
+  pump1Starts: number;
+  pump2RunHours: number;
+  pump2Starts: number;
 }
 
 export interface PlantState {
@@ -46,6 +52,10 @@ export interface PlantState {
   settings: SimulationSettings;
   history: HistoryPoint[];
   lastHistoryHour: number;
+  activeTest: { pump: PumpId; startedAt: number; scheduled: boolean } | null;
+  nextScheduledTestAt: number;
+  scheduledTestPump: PumpId;
+  alarmHistory: AlarmRecord[];
 }
 
 export interface Alarm {
@@ -53,4 +63,13 @@ export interface Alarm {
   title: string;
   detail: string;
   severity: AlarmSeverity;
+}
+
+export interface AlarmRecord extends Alarm {
+  occurredAtVirtualHour: number;
+  acknowledgedAtVirtualHour: number | null;
+  clearedAtVirtualHour: number | null;
+  occurredAt: string;
+  acknowledgedAt: string | null;
+  clearedAt: string | null;
 }

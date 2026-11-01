@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef } from 'react';
-import { createInitialPlant, stepPlant } from '../domain/simulator';
+import { canStartPumpTest, createInitialPlant, stepPlant } from '../domain/simulator';
 import type { OperationMode, PlantState, PumpId, SimulationSettings } from '../domain/types';
 import { loadPlant, savePlant } from '../services/localStore';
 
@@ -12,18 +12,78 @@ type Action =
   | { type: 'set-manual-pump'; pump: PumpId | null }
   | { type: 'toggle-pause' }
   | { type: 'set-pump'; pump: PumpId; field: 'available' | 'startFailure' | 'noFlow'; value: boolean }
+  | { type: 'run-test'; pump: PumpId }
+  | { type: 'acknowledge-alarm'; id: string }
   | { type: 'reset' };
+
+function normalizeSettings(current: SimulationSettings, update: Partial<SimulationSettings>): SimulationSettings {
+  const candidate = { ...current, ...update };
+  const startUpperLevel = Math.min(candidate.startUpperLevel, candidate.stopUpperLevel - 1);
+  const stopUpperLevel = Math.max(candidate.stopUpperLevel, startUpperLevel + 1);
+  const lowerBlockLevel = Math.min(candidate.lowerBlockLevel, candidate.lowerRecoveryLevel - 1);
+  const lowerRecoveryLevel = Math.max(candidate.lowerRecoveryLevel, lowerBlockLevel + 1);
+  return {
+    ...candidate,
+    startUpperLevel,
+    stopUpperLevel,
+    lowerBlockLevel,
+    lowerRecoveryLevel,
+    upperAlarmLevel: Math.max(candidate.upperAlarmLevel, stopUpperLevel + 1),
+  };
+}
+
+function hydratePlant(plant: PlantState): PlantState {
+  const initial = createInitialPlant();
+  return {
+    ...initial,
+    ...plant,
+    settings: normalizeSettings(initial.settings, plant.settings ?? {}),
+    pumps: {
+      1: { ...initial.pumps[1], ...plant.pumps?.[1] },
+      2: { ...initial.pumps[2], ...plant.pumps?.[2] },
+    },
+    history: (plant.history ?? []).map((point) => ({
+      ...point,
+      pump1RunHours: point.pump1RunHours ?? 0,
+      pump1Starts: point.pump1Starts ?? 0,
+      pump2RunHours: point.pump2RunHours ?? 0,
+      pump2Starts: point.pump2Starts ?? 0,
+    })),
+    alarmHistory: plant.alarmHistory ?? [],
+    activeTest: plant.activeTest ?? null,
+    nextScheduledTestAt: plant.nextScheduledTestAt ?? initial.nextScheduledTestAt,
+    scheduledTestPump: plant.scheduledTestPump ?? initial.scheduledTestPump,
+  };
+}
 
 function reducer(state: PlantState, action: Action): PlantState {
   switch (action.type) {
     case 'tick': return stepPlant(state, action.seconds);
-    case 'hydrate': return action.plant;
+    case 'hydrate': return hydratePlant(action.plant);
     case 'set-level': return { ...state, [action.tank === 'lower' ? 'lowerLevel' : 'upperLevel']: action.level };
-    case 'set-settings': return { ...state, settings: { ...state.settings, ...action.settings } };
+    case 'set-settings': {
+      const settings = normalizeSettings(state.settings, action.settings);
+      return {
+        ...state,
+        settings,
+        nextScheduledTestAt: action.settings.testIntervalHours === undefined
+          ? state.nextScheduledTestAt
+          : state.virtualHours + settings.testIntervalHours,
+      };
+    }
     case 'set-mode': return { ...state, mode: action.mode, manualPump: action.mode === 'auto' ? null : state.manualPump };
     case 'set-manual-pump': return { ...state, manualPump: action.pump };
     case 'toggle-pause': return { ...state, paused: !state.paused };
     case 'set-pump': return { ...state, pumps: { ...state.pumps, [action.pump]: { ...state.pumps[action.pump], [action.field]: action.value } } };
+    case 'run-test': return canStartPumpTest(state, action.pump)
+      ? { ...state, activeTest: { pump: action.pump, startedAt: state.virtualHours, scheduled: false } }
+      : state;
+    case 'acknowledge-alarm': return {
+      ...state,
+      alarmHistory: state.alarmHistory.map((alarm) => alarm.id === action.id && alarm.clearedAtVirtualHour === null && alarm.acknowledgedAtVirtualHour === null
+        ? { ...alarm, acknowledgedAtVirtualHour: state.virtualHours, acknowledgedAt: new Date().toISOString() }
+        : alarm),
+    };
     case 'reset': return createInitialPlant();
   }
 }

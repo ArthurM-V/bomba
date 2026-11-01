@@ -1,4 +1,4 @@
-import type { Alarm, HistoryPoint, PlantState, PumpId, PumpState, SimulationSettings } from './types';
+import type { Alarm, AlarmRecord, HistoryPoint, PlantState, PumpId, PumpState, SimulationSettings } from './types';
 
 export const DEFAULT_SETTINGS: SimulationSettings = {
   lowerCapacity: 140_000,
@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS: SimulationSettings = {
   lowerBlockLevel: 15,
   lowerRecoveryLevel: 25,
   upperAlarmLevel: 95,
+  testDurationHours: 15 / 60,
+  testIntervalHours: 168,
 };
 
 const makePump = (id: PumpId): PumpState => ({
@@ -37,31 +39,54 @@ export const createInitialPlant = (): PlantState => ({
   settings: { ...DEFAULT_SETTINGS },
   history: [],
   lastHistoryHour: 0,
+  activeTest: null,
+  nextScheduledTestAt: 168,
+  scheduledTestPump: 1,
+  alarmHistory: [],
 });
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
+const NO_FLOW_TIMEOUT_HOURS = 10 / 60;
 export const getWeeklyLeadPump = (virtualHours: number): PumpId => Math.floor(virtualHours / 168) % 2 === 0 ? 1 : 2;
 export const getActivePump = (plant: PlantState): PumpId | null =>
   plant.pumps[1].running ? 1 : plant.pumps[2].running ? 2 : null;
 
 function isPumpEligible(pump: PumpState) {
-  return pump.available && !pump.startFailure;
+  return pump.available && !pump.startFailure && !(pump.noFlow && pump.noFlowHours >= NO_FLOW_TIMEOUT_HOURS);
+}
+
+function isSafeToPump(plant: PlantState) {
+  return plant.lowerLevel > plant.settings.lowerBlockLevel && plant.upperLevel < plant.settings.upperAlarmLevel;
+}
+
+function isTestSafe(plant: PlantState, pump: PumpId) {
+  return plant.mode === 'auto' &&
+    !plant.automaticFillRequest &&
+    plant.upperLevel > plant.settings.startUpperLevel &&
+    plant.upperLevel < 70 &&
+    plant.lowerLevel >= plant.settings.lowerRecoveryLevel &&
+    isSafeToPump(plant) &&
+    isPumpEligible(plant.pumps[pump]);
+}
+
+export function canStartPumpTest(plant: PlantState, pump: PumpId) {
+  return plant.activeTest === null && isTestSafe(plant, pump);
 }
 
 function chooseAutomaticPump(plant: PlantState, requested: boolean): PumpId | null {
-  if (!requested || plant.lowerLevel <= plant.settings.lowerBlockLevel) return null;
+  if (!requested || !isSafeToPump(plant)) return null;
 
   const lead = getWeeklyLeadPump(plant.virtualHours);
   const reserve: PumpId = lead === 1 ? 2 : 1;
   const active = getActivePump(plant);
-  if (active !== null && !(plant.pumps[active].noFlow && plant.pumps[active].noFlowHours >= 0.08)) {
+  if (active !== null && isPumpEligible(plant.pumps[active])) {
     return active;
   }
   return [lead, reserve].find((id) => isPumpEligible(plant.pumps[id])) ?? null;
 }
 
 function chooseManualPump(plant: PlantState): PumpId | null {
-  if (plant.lowerLevel <= plant.settings.lowerBlockLevel || plant.manualPump === null) return null;
+  if (!isSafeToPump(plant) || plant.manualPump === null) return null;
   return isPumpEligible(plant.pumps[plant.manualPump]) ? plant.manualPump : null;
 }
 
@@ -78,9 +103,34 @@ export function stepPlant(previous: PlantState, realSeconds: number): PlantState
   if (previous.lowerLevel >= settings.lowerRecoveryLevel && previous.upperLevel <= settings.startUpperLevel) automaticFillRequest = true;
 
   const base: PlantState = { ...previous, virtualHours, automaticFillRequest };
-  const selectedPump = base.mode === 'auto'
-    ? chooseAutomaticPump(base, automaticFillRequest)
-    : chooseManualPump(base);
+  let activeTest = base.activeTest;
+  let nextScheduledTestAt = base.nextScheduledTestAt;
+  let scheduledTestPump = base.scheduledTestPump;
+
+  if (activeTest === null && base.virtualHours >= nextScheduledTestAt && canStartPumpTest(base, scheduledTestPump)) {
+    activeTest = { pump: scheduledTestPump, startedAt: base.virtualHours, scheduled: true };
+  }
+
+  let selectedPump: PumpId | null;
+  if (activeTest !== null) {
+    const completed = base.virtualHours - activeTest.startedAt >= settings.testDurationHours;
+    if (!isTestSafe(base, activeTest.pump) || completed) {
+      if (activeTest.scheduled) {
+        nextScheduledTestAt = base.virtualHours + settings.testIntervalHours;
+        scheduledTestPump = activeTest.pump === 1 ? 2 : 1;
+      }
+      activeTest = null;
+      selectedPump = base.mode === 'auto'
+        ? chooseAutomaticPump(base, automaticFillRequest)
+        : chooseManualPump(base);
+    } else {
+      selectedPump = activeTest.pump;
+    }
+  } else {
+    selectedPump = base.mode === 'auto'
+      ? chooseAutomaticPump(base, automaticFillRequest)
+      : chooseManualPump(base);
+  }
 
   const pumps: Record<PumpId, PumpState> = { 1: { ...base.pumps[1] }, 2: { ...base.pumps[2] } };
   ([1, 2] as PumpId[]).forEach((id) => {
@@ -101,12 +151,30 @@ export function stepPlant(previous: PlantState, realSeconds: number): PlantState
     previous.upperLevel + ((transferredLiters - settings.consumptionFlow * dtHours) / settings.upperCapacity) * 100,
   );
 
-  const next: PlantState = { ...base, lowerLevel: lowerLiters, upperLevel: upperLiters, pumps };
+  const next: PlantState = {
+    ...base,
+    lowerLevel: lowerLiters,
+    upperLevel: upperLiters,
+    pumps,
+    activeTest,
+    nextScheduledTestAt,
+    scheduledTestPump,
+  };
   if (virtualHours - previous.lastHistoryHour >= 0.25) {
-    const point: HistoryPoint = { virtualHour: virtualHours, lowerLevel: lowerLiters, upperLevel: upperLiters, activePump: selectedPump };
+    const point: HistoryPoint = {
+      virtualHour: virtualHours,
+      lowerLevel: lowerLiters,
+      upperLevel: upperLiters,
+      activePump: selectedPump,
+      pump1RunHours: pumps[1].runHours,
+      pump1Starts: pumps[1].starts,
+      pump2RunHours: pumps[2].runHours,
+      pump2Starts: pumps[2].starts,
+    };
     next.history = [...previous.history, point].slice(-96);
     next.lastHistoryHour = virtualHours;
   }
+  next.alarmHistory = updateAlarmHistory(next.alarmHistory, next);
   return next;
 }
 
@@ -123,13 +191,38 @@ export function getAlarms(plant: PlantState): Alarm[] {
     const pump = plant.pumps[id];
     if (pump.startFailure) alarms.push({ id: `start-${id}`, title: `Falha de partida Bomba ${id}`, detail: 'A bomba foi excluída da seleção automática.', severity: 'critical' });
     if (!pump.available) alarms.push({ id: `unavailable-${id}`, title: `Bomba ${id} indisponível`, detail: 'Equipamento colocado em manutenção simulada.', severity: 'warning' });
-    if (pump.running && pump.noFlow && pump.noFlowHours >= 0.03) {
+    if (pump.running && pump.noFlow && pump.noFlowHours >= NO_FLOW_TIMEOUT_HOURS) {
       alarms.push({ id: `flow-${id}`, title: `Sem vazão na Bomba ${id}`, detail: 'Motor ligado sem elevação de nível detectada.', severity: 'critical' });
     }
     if (pump.runHours >= 100) alarms.push({ id: `maintenance-${id}`, title: `Manutenção preventiva Bomba ${id}`, detail: 'Horímetro acima de 100 horas simuladas.', severity: 'warning' });
   });
   if (active !== null) alarms.push({ id: 'pumping', title: `Bomba ${active} em operação`, detail: 'Recalque em andamento.', severity: 'info' });
   return alarms;
+}
+
+export function updateAlarmHistory(history: AlarmRecord[], plant: PlantState): AlarmRecord[] {
+  const activeAlarms = getAlarms(plant).filter((alarm) => alarm.severity !== 'info');
+  const activeIds = new Set(activeAlarms.map((alarm) => alarm.id));
+  const recordedAt = new Date().toISOString();
+  const next = history.map((record) => record.clearedAtVirtualHour === null && !activeIds.has(record.id)
+    ? { ...record, clearedAtVirtualHour: plant.virtualHours, clearedAt: recordedAt }
+    : record);
+
+  activeAlarms.forEach((alarm) => {
+    const isAlreadyOpen = next.some((record) => record.id === alarm.id && record.clearedAtVirtualHour === null);
+    if (!isAlreadyOpen) {
+      next.push({
+        ...alarm,
+        occurredAtVirtualHour: plant.virtualHours,
+        acknowledgedAtVirtualHour: null,
+        clearedAtVirtualHour: null,
+        occurredAt: recordedAt,
+        acknowledgedAt: null,
+        clearedAt: null,
+      });
+    }
+  });
+  return next.slice(-100);
 }
 
 export const formatSimulationTime = (hours: number) => {

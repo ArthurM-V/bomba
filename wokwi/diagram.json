@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "author": "Projeto SCADA de Abastecimento de Agua",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "id": "esp",
+      "type": "wokwi-esp32-devkit-v1",
+      "top": 20,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "id": "levelLower",
+      "type": "wokwi-potentiometer",
+      "top": -120,
+      "left": -300,
+      "attrs": { "value": "839" }
+    },
+    {
+      "id": "levelUpper",
+      "type": "wokwi-potentiometer",
+      "top": 20,
+      "left": -300,
+      "attrs": { "value": "491" }
+    },
+    {
+      "id": "relayPump1",
+      "type": "wokwi-relay-module",
+      "top": -150,
+      "left": 310,
+      "attrs": { "transistor": "pnp" }
+    },
+    {
+      "id": "relayPump2",
+      "type": "wokwi-relay-module",
+      "top": 30,
+      "left": 310,
+      "attrs": { "transistor": "pnp" }
+    },
+    {
+      "id": "ledContactor1",
+      "type": "wokwi-led",
+      "top": -150,
+      "left": 570,
+      "attrs": { "color": "blue", "label": "K1" }
+    },
+    {
+      "id": "resistorContactor1",
+      "type": "wokwi-resistor",
+      "top": -100,
+      "left": 570,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "id": "ledContactor2",
+      "type": "wokwi-led",
+      "top": 30,
+      "left": 570,
+      "attrs": { "color": "blue", "label": "K2" }
+    },
+    {
+      "id": "resistorContactor2",
+      "type": "wokwi-resistor",
+      "top": 80,
+      "left": 570,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "id": "ledAlarm",
+      "type": "wokwi-led",
+      "top": 210,
+      "left": 310,
+      "attrs": { "color": "red", "label": "ALARME" }
+    },
+    {
+      "id": "resistorAlarm",
+      "type": "wokwi-resistor",
+      "top": 260,
+      "left": 310,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "id": "buzzerAlarm",
+      "type": "wokwi-buzzer",
+      "top": 210,
+      "left": 470,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "id": "oled",
+      "type": "board-ssd1306",
+      "top": 360,
+      "left": 300,
+      "attrs": { "i2cAddress": "0x3c" }
+    },
+    {
+      "id": "btnMode",
+      "type": "wokwi-pushbutton",
+      "top": 170,
+      "left": -330,
+      "attrs": { "color": "green", "label": "AUTO/MANUAL", "key": "M", "bounce": "0" }
+    },
+    {
+      "id": "btnTestPump1",
+      "type": "wokwi-pushbutton",
+      "top": 260,
+      "left": -330,
+      "attrs": { "color": "green", "label": "TESTE B1", "key": "1", "bounce": "0" }
+    },
+    {
+      "id": "btnTestPump2",
+      "type": "wokwi-pushbutton",
+      "top": 350,
+      "left": -330,
+      "attrs": { "color": "green", "label": "TESTE B2", "key": "2", "bounce": "0" }
+    },
+    {
+      "id": "btnStartFail1",
+      "type": "wokwi-pushbutton",
+      "top": 440,
+      "left": -330,
+      "attrs": { "color": "red", "label": "FALHA PARTIDA B1", "key": "Q", "bounce": "0" }
+    },
+    {
+      "id": "btnStartFail2",
+      "type": "wokwi-pushbutton",
+      "top": 530,
+      "left": -330,
+      "attrs": { "color": "red", "label": "FALHA PARTIDA B2", "key": "W", "bounce": "0" }
+    },
+    {
+      "id": "btnNoFlow1",
+      "type": "wokwi-pushbutton",
+      "top": 620,
+      "left": -330,
+      "attrs": { "color": "orange", "label": "SEM VAZAO B1", "key": "A", "bounce": "0" }
+    },
+    {
+      "id": "btnNoFlow2",
+      "type": "wokwi-pushbutton",
+      "top": 710,
+      "left": -330,
+      "attrs": { "color": "orange", "label": "SEM VAZAO B2", "key": "S", "bounce": "0" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+
+    [ "levelLower:VCC", "esp:3V3", "red", [] ],
+    [ "levelLower:GND", "esp:GND.1", "black", [] ],
+    [ "levelLower:SIG", "esp:D34", "green", [] ],
+    [ "levelUpper:VCC", "esp:3V3", "red", [] ],
+    [ "levelUpper:GND", "esp:GND.1", "black", [] ],
+    [ "levelUpper:SIG", "esp:D35", "green", [] ],
+
+    [ "relayPump1:VCC", "esp:3V3", "red", [] ],
+    [ "relayPump1:GND", "esp:GND.2", "black", [] ],
+    [ "relayPump1:IN", "esp:D16", "blue", [] ],
+    [ "relayPump2:VCC", "esp:3V3", "red", [] ],
+    [ "relayPump2:GND", "esp:GND.2", "black", [] ],
+    [ "relayPump2:IN", "esp:D17", "blue", [] ],
+
+    [ "ledContactor1:A", "esp:D18", "blue", [] ],
+    [ "ledContactor1:C", "resistorContactor1:1", "blue", [] ],
+    [ "resistorContactor1:2", "esp:GND.2", "black", [] ],
+    [ "ledContactor2:A", "esp:D19", "blue", [] ],
+    [ "ledContactor2:C", "resistorContactor2:1", "blue", [] ],
+    [ "resistorContactor2:2", "esp:GND.2", "black", [] ],
+    [ "ledAlarm:A", "esp:D5", "red", [] ],
+    [ "ledAlarm:C", "resistorAlarm:1", "red", [] ],
+    [ "resistorAlarm:2", "esp:GND.2", "black", [] ],
+    [ "buzzerAlarm:1", "esp:GND.2", "black", [] ],
+    [ "buzzerAlarm:2", "esp:D23", "orange", [] ],
+
+    [ "oled:VCC", "esp:3V3", "red", [] ],
+    [ "oled:GND", "esp:GND.1", "black", [] ],
+    [ "oled:SDA", "esp:D21", "green", [] ],
+    [ "oled:SCL", "esp:D22", "yellow", [] ],
+
+    [ "btnMode:1.l", "esp:D25", "green", [] ],
+    [ "btnMode:2.l", "esp:GND.1", "black", [] ],
+    [ "btnTestPump1:1.l", "esp:D26", "green", [] ],
+    [ "btnTestPump1:2.l", "esp:GND.1", "black", [] ],
+    [ "btnTestPump2:1.l", "esp:D27", "green", [] ],
+    [ "btnTestPump2:2.l", "esp:GND.1", "black", [] ],
+    [ "btnStartFail1:1.l", "esp:D32", "green", [] ],
+    [ "btnStartFail1:2.l", "esp:GND.1", "black", [] ],
+    [ "btnStartFail2:1.l", "esp:D33", "green", [] ],
+    [ "btnStartFail2:2.l", "esp:GND.1", "black", [] ],
+    [ "btnNoFlow1:1.l", "esp:D13", "green", [] ],
+    [ "btnNoFlow1:2.l", "esp:GND.1", "black", [] ],
+    [ "btnNoFlow2:1.l", "esp:D14", "green", [] ],
+    [ "btnNoFlow2:2.l", "esp:GND.1", "black", [] ]
+  ],
+  "serialMonitor": { "display": "terminal" },
+  "dependencies": {}
+}

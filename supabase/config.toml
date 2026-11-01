@@ -1,0 +1,10 @@
+project_id = "scada-abastecimento"
+
+# A autenticacao JWT padrao e desativada somente nesta rota, pois o ESP32 usa
+# uma chave exclusiva no cabecalho X-Device-Key. A funcao valida essa chave
+# antes de gravar e usa a chave secreta apenas no ambiente do servidor.
+[functions.telemetry]
+verify_jwt = false
+
+[functions.device-commands]
+verify_jwt = false
