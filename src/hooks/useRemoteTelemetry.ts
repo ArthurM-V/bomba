@@ -17,13 +17,17 @@ import {
   type TelemetryRecord,
 } from '../services/supabaseRest';
 
-type RemoteStatus = 'not-configured' | 'signed-out' | 'loading' | 'connected' | 'error';
+export type RemoteStatus = 'not-configured' | 'signed-out' | 'loading' | 'connected' | 'error';
+
+export function hasLiveRemoteTelemetry(status: RemoteStatus, plant: PlantState | null) {
+  return status === 'connected' && plant !== null;
+}
 
 const alarmCatalog: Record<string, Omit<Alarm, 'id'>> = {
   LOWER_BLOCK: { title: 'Reservatório inferior baixo', detail: 'Bombeamento bloqueado pelo ESP32.', severity: 'critical' },
   UPPER_HIGH_HIGH: { title: 'Nível superior crítico', detail: 'Proteção de transbordamento ativa.', severity: 'critical' },
-  START_FAIL_B1: { title: 'Falha de partida Bomba 1', detail: 'A bomba foi retirada da seleção.', severity: 'critical' },
-  START_FAIL_B2: { title: 'Falha de partida Bomba 2', detail: 'A bomba foi retirada da seleção.', severity: 'critical' },
+  START_FAIL_B1: { title: 'Falha de partida Bomba 1', detail: 'Comando de partida emitido, mas a bomba não entrou em operação.', severity: 'critical' },
+  START_FAIL_B2: { title: 'Falha de partida Bomba 2', detail: 'Comando de partida emitido, mas a bomba não entrou em operação.', severity: 'critical' },
   NO_FLOW_B1: { title: 'Sem vazão na Bomba 1', detail: 'Não houve elevação de nível detectada.', severity: 'critical' },
   NO_FLOW_B2: { title: 'Sem vazão na Bomba 2', detail: 'Não houve elevação de nível detectada.', severity: 'critical' },
   LONG_RUN_B1: { title: 'Tempo excessivo Bomba 1', detail: 'Proteção por tempo máximo de operação.', severity: 'warning' },
@@ -73,6 +77,7 @@ function toPlant(records: TelemetryRecord[]): PlantState | null {
         pump1Starts: pump1?.starts ?? 0,
         pump2RunHours: pump2?.runHours ?? 0,
         pump2Starts: pump2?.starts ?? 0,
+        alarmIds: record.alarms.split('|').filter((alarm) => alarm && alarm !== 'NONE'),
       };
     }),
   };

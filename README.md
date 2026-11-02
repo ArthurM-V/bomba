@@ -1,8 +1,10 @@
 # SCADA de Abastecimento de Água
 
-O painel atual ainda e um simulador hidraulico no navegador. O repositorio
-tambem contem o firmware Wokwi/ESP32 e uma API Supabase de ingestao de
-telemetria, ainda sem leitura pelo painel.
+O modo principal do painel é um simulador hidráulico local, determinístico e
+offline. O repositório também contém firmware Wokwi/ESP32 e integração com
+Supabase: após configuração e login do operador, o painel lê telemetria e
+envia comandos remotos. Se a conexão remota falhar, a interface retorna ao
+simulador local.
 
 ## Executar
 
@@ -15,18 +17,23 @@ npm run dev
 
 - Simulador dos reservatórios inferior e superior.
 - Controle automático e manual com intertravamentos.
-- Alternância semanal acelerada, falhas, alarmes e horímetros.
+- Relógio virtual com avanço de 1 hora, 1 dia, 1 semana ou período personalizado; alternância semanal, falhas, alarmes e horímetros.
 - Persistência local via IndexedDB.
+- Painel remoto por Supabase, condicionado à configuração externa e à
+  disponibilidade do ESP32.
 
-O núcleo de domínio em `src/domain/` não depende de React ou IndexedDB. Uma etapa posterior poderá substituir apenas a camada de persistência e conectar telemetria/comandos a Node.js e ESP32.
+O núcleo de domínio em `src/domain/` não depende de React ou IndexedDB. A
+persistência local e a leitura remota estão isoladas em serviços próprios.
 
 O escopo, as decisões de persistência e os critérios desta primeira etapa estão em [docs/plano-tecnico.md](docs/plano-tecnico.md).
+Consulte também a matriz de [itens implementados e previstos](docs/implementado-previsto.md).
 
 ## Telemetria
 
-As migracoes, a Edge Function e o procedimento de publicacao estao em
-[supabase/README.md](supabase/README.md). O firmware fica em `wokwi/`; mantenha
-`wokwi/secrets.h` apenas local, pois ele contem a chave do dispositivo.
+As migrações, Edge Functions, variáveis do painel e o procedimento de publicação
+estão em [supabase/README.md](supabase/README.md). O firmware fica em
+`wokwi/`; mantenha `wokwi/secrets.h` apenas local, pois ele contém a chave
+do dispositivo.
 
 ## Entrega final
 

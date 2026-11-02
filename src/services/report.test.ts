@@ -14,6 +14,7 @@ describe('relatório CSV', () => {
       pump1Starts: 2,
       pump2RunHours: 8.17,
       pump2Starts: 0,
+      alarmIds: ['low-lower'],
     });
     plant.alarmHistory.push({
       id: 'low-lower',
@@ -27,6 +28,18 @@ describe('relatório CSV', () => {
       acknowledgedAt: '2026-11-01T12:01:00.000Z',
       clearedAt: '2026-11-01T12:02:00.000Z',
     });
+    plant.testResults.push({
+      id: 'test-1-1',
+      pump: 1,
+      startedAt: 1,
+      endedAt: 1.25,
+      durationHours: 0.25,
+      upperLevelGain: 2.1,
+      lowerLevelDrop: 1,
+      status: 'approved',
+      reason: 'Partida confirmada.',
+      restoredAtVirtualHour: null,
+    });
 
     const csv = buildReportCsv(plant, [], 'local', plant.alarmHistory);
 
@@ -35,5 +48,8 @@ describe('relatório CSV', () => {
     expect(csv).toContain('Reservatório inferior baixo');
     expect(csv).toContain('Histórico operacional');
     expect(csv).toContain('10.750');
+    expect(csv).toContain('IndexedDB');
+    expect(csv).toContain('Resultados de testes individuais');
+    expect(csv).toContain('Partida confirmada.');
   });
 });

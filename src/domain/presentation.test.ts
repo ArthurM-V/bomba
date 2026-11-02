@@ -5,6 +5,7 @@ import { createInitialPlant, getActivePump, getAlarms, getWeeklyLeadPump, stepPl
 describe('cenários locais de apresentação', () => {
   it('T01 — enche o RS automaticamente e para no nível configurado', () => {
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.upperLevel = plant.settings.startUpperLevel;
     const pumping = stepPlant(plant, 1);
     expect(getActivePump(pumping)).toBe(1);
@@ -16,6 +17,7 @@ describe('cenários locais de apresentação', () => {
 
   it('T02 e T03 — simula consumo e bloqueia a partida manual com RI baixo', () => {
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.mode = 'manual';
     plant.upperLevel = 60;
     const draining = stepPlant(plant, 1);
@@ -33,19 +35,22 @@ describe('cenários locais de apresentação', () => {
     expect(getWeeklyLeadPump(168)).toBe(2);
 
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.lowerLevel = 50;
     plant.upperLevel = 50;
-    plant.activeTest = { pump: 2, startedAt: 0, scheduled: false };
+    plant.activeTest = { pump: 2, startedAt: 0, startedUpperLevel: plant.upperLevel, startedLowerLevel: plant.lowerLevel, previousSpeed: plant.settings.speed, scheduled: false };
     expect(getActivePump(stepPlant(plant, 0.1))).toBe(2);
   });
 
   it('T06 e T07 — seleciona a reserva para falha de partida e falta de vazão', () => {
     const failedStart = createInitialPlant();
+    failedStart.paused = false;
     failedStart.upperLevel = 20;
     failedStart.pumps[1].startFailure = true;
     expect(getActivePump(stepPlant(failedStart, 0.01))).toBe(2);
 
     const noFlow = createInitialPlant();
+    noFlow.paused = false;
     noFlow.upperLevel = 20;
     noFlow.pumps[1].noFlow = true;
     const afterTimeout = stepPlant(noFlow, 0.17);
@@ -54,7 +59,9 @@ describe('cenários locais de apresentação', () => {
   });
 
   it('T09 — conserva histórico e gera relatório exportável', () => {
-    const plant = stepPlant(createInitialPlant(), 0.25);
+    const initial = createInitialPlant();
+    initial.paused = false;
+    const plant = stepPlant(initial, 0.25);
     const csv = buildReportCsv(plant, getAlarms(plant), 'local', plant.alarmHistory);
     expect(plant.history).toHaveLength(1);
     expect(csv).toContain('Histórico operacional');

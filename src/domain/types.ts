@@ -9,6 +9,7 @@ export interface PumpState {
   startFailure: boolean;
   noFlow: boolean;
   runHours: number;
+  continuousRunHours: number;
   starts: number;
   noFlowHours: number;
 }
@@ -27,6 +28,7 @@ export interface SimulationSettings {
   upperAlarmLevel: number;
   testDurationHours: number;
   testIntervalHours: number;
+  maxContinuousRunHours: number;
 }
 
 export interface HistoryPoint {
@@ -38,6 +40,7 @@ export interface HistoryPoint {
   pump1Starts: number;
   pump2RunHours: number;
   pump2Starts: number;
+  alarmIds: string[];
 }
 
 export interface PlantState {
@@ -52,10 +55,33 @@ export interface PlantState {
   settings: SimulationSettings;
   history: HistoryPoint[];
   lastHistoryHour: number;
-  activeTest: { pump: PumpId; startedAt: number; scheduled: boolean } | null;
+  activeTest: ActiveTest | null;
+  testResults: TestResult[];
   nextScheduledTestAt: number;
   scheduledTestPump: PumpId;
   alarmHistory: AlarmRecord[];
+}
+
+export interface ActiveTest {
+  pump: PumpId;
+  startedAt: number;
+  startedUpperLevel: number;
+  startedLowerLevel: number;
+  previousSpeed: number;
+  scheduled: boolean;
+}
+
+export interface TestResult {
+  id: string;
+  pump: PumpId;
+  startedAt: number;
+  endedAt: number;
+  durationHours: number;
+  upperLevelGain: number;
+  lowerLevelDrop: number;
+  status: 'approved' | 'failed' | 'interrupted';
+  reason: string;
+  restoredAtVirtualHour: number | null;
 }
 
 export interface Alarm {
