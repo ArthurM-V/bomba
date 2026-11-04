@@ -123,9 +123,12 @@ export function simulationReducer(state: PlantState, action: SimulationAction): 
         ? { ...alarm, acknowledgedAtVirtualHour: state.virtualHours, acknowledgedAt: new Date().toISOString() }
         : alarm),
     };
-    case 'run-scenario': return action.scenario === 'weekly-alternation'
-      ? advancePlantByHours(state, 168)
-      : createDemonstrationScenario(action.scenario);
+    case 'run-scenario': {
+      const next = action.scenario === 'weekly-alternation'
+        ? advancePlantByHours(state, 168)
+        : createDemonstrationScenario(action.scenario, state.virtualHours);
+      return { ...next, lastScenario: action.scenario, scenarioPhase: action.scenario };
+    }
     case 'reset': return createInitialPlant();
   }
 }

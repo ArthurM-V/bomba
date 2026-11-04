@@ -24,6 +24,8 @@ function Range({ label, value, min, max, step = 1, suffix, onChange }: { label: 
 
 export function SimulationControls({ plant, dispatch }: { plant: PlantState; dispatch: Dispatch<SimulationAction> }) {
   const [customHours, setCustomHours] = useState('');
+  const labelForScenario = (id?: string) => scenarios.find((scenario) => scenario.id === id)?.label ?? 'Nenhum cenário selecionado';
+  const hasScenarioTransition = plant.lastScenario !== undefined && plant.scenarioPhase !== undefined && plant.lastScenario !== plant.scenarioPhase;
   const advanceTime = (hours: number) => dispatch({ type: 'advance-time', hours });
   const advanceCustomTime = () => {
     const hours = Number(customHours.replace(',', '.'));
@@ -65,7 +67,8 @@ export function SimulationControls({ plant, dispatch }: { plant: PlantState; dis
       </div>
 
       <section className="scenario-block" aria-labelledby="scenario-title">
-        <div><p className="section-label" id="scenario-title">Cenários de demonstração</p><p className="hint">Cada botão limpa o estado anterior e prepara o cenário. Os testes individuais iniciam em 60× para serem observados.</p></div>
+        <div><p className="section-label" id="scenario-title">Cenários de demonstração</p><p className="hint">Cada botão prepara um estado isolado, mantendo o relógio virtual. Os testes individuais iniciam em 60× para serem observados.</p></div>
+        <div className="scenario-last" role="status"><span>Último cenário testado</span><b>{labelForScenario(plant.lastScenario)}{hasScenarioTransition ? ` → ${labelForScenario(plant.scenarioPhase)}` : ''}</b></div>
         <div className="scenario-grid">
           {scenarios.map((scenario) => <button type="button" key={scenario.id} className="scenario-button" onClick={() => dispatch({ type: 'run-scenario', scenario: scenario.id })}><b>{scenario.label}</b><span>{scenario.note}</span></button>)}
         </div>

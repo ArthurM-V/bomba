@@ -156,19 +156,34 @@ function chooseManualPump(plant: PlantState): PumpId | null {
 }
 
 function stepPlantByHours(previous: PlantState, dtHours: number): PlantState {
-  const settings = previous.settings;
   const virtualHours = previous.virtualHours + dtHours;
+  const recoveryTransitionDue = previous.lowerRecoveryTransitionAtVirtualHour !== undefined &&
+    virtualHours + 1e-9 >= previous.lowerRecoveryTransitionAtVirtualHour;
+  const settings = recoveryTransitionDue
+    ? { ...previous.settings, consumptionFlow: 300, speed: 3_600 }
+    : previous.settings;
 
   let lowerLockout = Boolean(previous.lowerLockout);
   if (previous.lowerLevel <= settings.lowerBlockLevel) lowerLockout = true;
   else if (previous.lowerLevel >= settings.lowerRecoveryLevel) lowerLockout = false;
+  if (recoveryTransitionDue) lowerLockout = true;
 
   let automaticFillRequest = previous.automaticFillRequest;
   if (previous.upperLevel <= settings.startUpperLevel) automaticFillRequest = true;
   if (previous.upperLevel >= settings.stopUpperLevel) automaticFillRequest = false;
   if (lowerLockout) automaticFillRequest = false;
 
-  const base: PlantState = { ...previous, virtualHours, automaticFillRequest, lowerLockout };
+  const base: PlantState = {
+    ...previous,
+    virtualHours,
+    settings,
+    automaticFillRequest,
+    lowerLockout,
+    lowerRecoveryTransitionAtVirtualHour: recoveryTransitionDue
+      ? undefined
+      : previous.lowerRecoveryTransitionAtVirtualHour,
+    scenarioPhase: recoveryTransitionDue ? 'lower-recovery' : previous.scenarioPhase,
+  };
   // O comando manual não pode ser retomado automaticamente após um bloqueio.
   if (base.mode === 'manual' && base.manualPump !== null && !isSafeToPump(base)) base.manualPump = null;
   let activeTest = base.activeTest;
@@ -282,12 +297,17 @@ export function advancePlantByHours(previous: PlantState, hours: number): PlantS
 }
 
 /**
- * Returns a clean, paused and repeatable starting point for each item in the
- * demonstration. Scenarios deliberately begin from a fresh plant so one
- * demonstration never leaks a fault or a manual command into the next one.
+ * Returns a clean and repeatable starting point for each item in the
+ * demonstration, preserving the current virtual clock when it is supplied.
+ * This keeps the operational timeline continuous while isolating scenario
+ * levels, faults and commands from one another.
  */
-export function createDemonstrationScenario(scenario: DemonstrationScenario): PlantState {
+export function createDemonstrationScenario(scenario: DemonstrationScenario, referenceVirtualHours = 0): PlantState {
   const plant = createInitialPlant();
+  plant.virtualHours = referenceVirtualHours;
+  plant.lastHistoryHour = referenceVirtualHours;
+  plant.nextScheduledTestAt = referenceVirtualHours + plant.settings.testIntervalHours;
+  plant.scheduledTestPump = getWeeklyLeadPump(referenceVirtualHours);
   plant.paused = true;
   plant.upperLevel = 60;
 
@@ -309,6 +329,9 @@ export function createDemonstrationScenario(scenario: DemonstrationScenario): Pl
       plant.upperLevel = 29;
       plant.lowerLevel = plant.settings.lowerBlockLevel + 0.7;
       plant.settings.speed = 60;
+      // A primeira etapa já processa um minuto para exibir a bomba ligada.
+      // Os 30 s reais restantes, em 60×, equivalem a meia hora virtual.
+      plant.lowerRecoveryTransitionAtVirtualHour = plant.virtualHours + CLOCK_STEP_HOURS + 0.5;
       return { ...startAndPause(), paused: false };
     case 'lower-recovery':
       // Demonstra a histerese: a proteção permanece até o RI atingir 25%,

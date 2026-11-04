@@ -51,6 +51,12 @@ export interface PlantState {
   automaticFillRequest: boolean;
   /** Histerese do RI: trava em nível crítico e libera somente na recuperação. */
   lowerLockout?: boolean;
+  /** Marco virtual da transição automática do cenário de falta de água. */
+  lowerRecoveryTransitionAtVirtualHour?: number;
+  /** Cenário de demonstração mais recentemente acionado pelo operador. */
+  lastScenario?: string;
+  /** Etapa atualmente exibida quando um cenário possui transição automática. */
+  scenarioPhase?: string;
   virtualHours: number;
   paused: boolean;
   pumps: Record<PumpId, PumpState>;

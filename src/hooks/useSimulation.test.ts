@@ -53,4 +53,23 @@ describe('estado da simulação', () => {
     expect(alternated.pumps[2].starts).toBeGreaterThanOrEqual(5);
     expect(alternated.history.length).toBeGreaterThan(plant.history.length);
   });
+
+  it('preserva o relógio virtual ao preparar outro cenário', () => {
+    const plant = createInitialPlant();
+    plant.virtualHours = 213.5;
+    plant.lastHistoryHour = 213.5;
+
+    const scenario = simulationReducer(plant, { type: 'run-scenario', scenario: 'low-water' });
+
+    expect(scenario.virtualHours).toBeCloseTo(213.5 + 1 / 60, 8);
+    expect(scenario.lastHistoryHour).toBeCloseTo(213.5, 8);
+  });
+
+  it('registra o cenário e a fase de retorno seguro na transição automática', () => {
+    let plant = simulationReducer(createInitialPlant(), { type: 'run-scenario', scenario: 'low-water' });
+    expect(plant).toMatchObject({ lastScenario: 'low-water', scenarioPhase: 'low-water' });
+
+    for (let elapsed = 0; elapsed < 30; elapsed += 0.25) plant = stepPlant(plant, 0.25);
+    expect(plant).toMatchObject({ lastScenario: 'low-water', scenarioPhase: 'lower-recovery' });
+  });
 });

@@ -167,6 +167,16 @@ describe('simulador hidráulico', () => {
     expect(getActivePump(recovered)).toBe(1);
   });
 
+  it('transita de falta de água para retorno seguro após trinta segundos reais', () => {
+    let plant = createDemonstrationScenario('low-water');
+    for (let elapsed = 0; elapsed < 30; elapsed += 0.25) plant = stepPlant(plant, 0.25);
+
+    expect(plant.lowerRecoveryTransitionAtVirtualHour).toBeUndefined();
+    expect(plant.lowerLockout).toBe(true);
+    expect(plant.settings.speed).toBe(3600);
+    expect(plant.settings.consumptionFlow).toBe(300);
+  });
+
   it('descarta o comando manual quando a proteção atua', () => {
     const plant = createInitialPlant();
     plant.paused = false;

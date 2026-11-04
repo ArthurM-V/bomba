@@ -144,6 +144,7 @@ h2 { color: #f2f7f9; font-weight: 650; letter-spacing: -.015em; }
 .scenario-button b, .scenario-button span { display: block; }
 .scenario-button b { font-size: .7rem; }
 .scenario-button span { margin-top: .18rem; color: #789ba5; font-size: .6rem; line-height: 1.2; }
+.scenario-last { display: grid; gap: .12rem; margin: 0 0 .65rem; border: 1px solid #285566; border-left: 3px solid #40bdca; border-radius: 7px; padding: .48rem .6rem; background: #082430; }.scenario-last span { color: #86aab4; font-size: .58rem; text-transform: uppercase; letter-spacing: .05em; }.scenario-last b { color: #d7f4f6; font-size: .72rem; }
 .scenario-recovery { display: grid; gap: .42rem; margin-top: .65rem; border-top: 1px solid #1e414c; padding-top: .65rem; color: #8daab3; font-size: .62rem; }.scenario-recovery > div { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }.scenario-recovery .restore-pump-button { margin: 0; }
 .advanced-controls { margin-top: 1rem; border-top: 1px solid #1c3c47; }
 .advanced-controls summary { cursor: pointer; list-style: none; padding: .85rem 0; color: #a7dfe6; font-size: .73rem; font-weight: 700; }
