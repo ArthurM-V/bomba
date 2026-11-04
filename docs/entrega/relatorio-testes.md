@@ -3,7 +3,7 @@
 ## Situação do relatório
 
 Os testes automatizados do painel local foram executados em 02/11/2026:
-**26 testes em 6 arquivos aprovados**, seguidos de build de produção sem erros.
+**33 testes em 7 arquivos aprovados**, seguidos de build de produção sem erros.
 Eles cobrem controle automático, intertravamentos manuais, alternância, falhas,
 tempo contínuo, manutenção, histórico, relatório, persistência e continuidade
 do modo local após falha remota.
@@ -15,6 +15,7 @@ Os cenários abaixo ainda exigem demonstração assistida no painel e, para o ca
 | ID | Verificação | Evidência | Resultado |
 |---|---|---|---|
 | A01 | Lógica hidráulica, falhas, proteção e testes | `src/domain/simulator.test.ts` | Aprovado |
+| A01a | Condições de processo e apresentação | `src/domain/processCondition.test.ts` e `src/domain/presentation.test.ts` | Aprovado |
 | A02 | Contrato de telemetria | `src/services/telemetryPayload.test.ts` | Aprovado |
 | A03 | Conteúdo do CSV | `src/services/report.test.ts` | Aprovado |
 | A04 | Compilação de produção | `npm run build` em 02/11/2026 | Aprovado |

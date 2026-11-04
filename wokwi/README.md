@@ -15,3 +15,10 @@ da cadeia apresentada pelo dominio da API.
 O firmware inclui automaticamente um `bootId` novo a cada inicializacao e uma
 sequencia de eventos. Em caso de timeout, ele reenvia o mesmo evento para que a
 API nao gere telemetria duplicada.
+
+## Estado de validacao
+
+As rotas Supabase foram verificadas em 01/11/2026 e o painel local foi
+validado em 02/11/2026 com 33 testes automatizados em 7 arquivos e build de
+producao sem erros. A compilacao/execucao deste firmware no Wokwi e a validacao
+de telemetria e comandos de ponta a ponta continuam pendentes nesta maquina.

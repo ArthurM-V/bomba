@@ -12,6 +12,7 @@ describe('simulador hidráulico', () => {
 
   it('bloqueia o recalque se o nível inferior estiver em condição crítica', () => {
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.upperLevel = 20;
     plant.lowerLevel = 10;
     expect(getActivePump(stepPlant(plant, 1))).toBeNull();
@@ -19,6 +20,7 @@ describe('simulador hidráulico', () => {
 
   it('mantém o bloqueio por nível inferior também no modo manual', () => {
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.mode = 'manual';
     plant.manualPump = 1;
     plant.lowerLevel = 10;
@@ -28,6 +30,7 @@ describe('simulador hidráulico', () => {
 
   it('bloqueia o recalque manual no alarme de nível superior alto', () => {
     const plant = createInitialPlant();
+    plant.paused = false;
     plant.mode = 'manual';
     plant.manualPump = 1;
     plant.upperLevel = plant.settings.upperAlarmLevel;
@@ -118,7 +121,7 @@ describe('simulador hidráulico', () => {
     expect(alarmed.alarmHistory).toMatchObject([{ id: 'low-lower', acknowledgedAtVirtualHour: null, clearedAtVirtualHour: null }]);
   });
 
-  it('prepara cenários da demonstração de forma limpa e pausada', () => {
+  it('prepara cenários da demonstração com o processo observável', () => {
     const normal = createDemonstrationScenario('normal');
     const filling = createDemonstrationScenario('filling');
     const draining = createDemonstrationScenario('draining');
@@ -127,9 +130,54 @@ describe('simulador hidráulico', () => {
     expect(normal).toMatchObject({ paused: true, mode: 'auto', upperLevel: 60 });
     expect(getActivePump(filling)).toBe(1);
     expect(draining.upperLevel).toBeLessThan(65);
-    expect(getActivePump(lowWater)).toBeNull();
-    expect(lowWater.lowerLevel).toBeLessThanOrEqual(lowWater.settings.lowerBlockLevel);
-    expect(getAlarms(lowWater).map((alarm) => alarm.id)).toContain('low-lower');
+    expect(lowWater.paused).toBe(false);
+    expect(getActivePump(lowWater)).toBe(1);
+    const tripped = advancePlantByHours(lowWater, 0.25);
+    expect(getActivePump(tripped)).toBeNull();
+    expect(getAlarms(tripped).map((alarm) => alarm.id)).toContain('low-lower');
+  });
+
+  it('mantém o bloqueio do inferior até o retorno seguro', () => {
+    const plant = createInitialPlant();
+    plant.paused = false;
+    plant.lowerLevel = 14;
+    plant.upperLevel = 20;
+
+    const mid = advancePlantByHours(plant, 6);
+    expect(mid.lowerLevel).toBeGreaterThan(15);
+    expect(mid.lowerLevel).toBeLessThan(25);
+    expect(getActivePump(mid)).toBeNull();
+    expect(mid.pumps[1].starts + mid.pumps[2].starts).toBe(0);
+    expect(getAlarms(mid).map((alarm) => alarm.id)).toContain('low-lower');
+
+    const after = advancePlantByHours(mid, 8);
+    expect(getActivePump(after)).toBe(1);
+    expect(getAlarms(after).map((alarm) => alarm.id)).not.toContain('low-lower');
+  });
+
+  it('demonstra o retorno seguro sem zerar a entrada de água', () => {
+    const recovering = createDemonstrationScenario('lower-recovery');
+
+    expect(recovering.paused).toBe(false);
+    expect(recovering.settings.incomingFlow).toBeGreaterThan(0);
+    expect(getAlarms(recovering).map((alarm) => alarm.id)).toContain('low-lower');
+
+    const recovered = advancePlantByHours(recovering, 13);
+    expect(getAlarms(recovered).map((alarm) => alarm.id)).not.toContain('low-lower');
+    expect(getActivePump(recovered)).toBe(1);
+  });
+
+  it('descarta o comando manual quando a proteção atua', () => {
+    const plant = createInitialPlant();
+    plant.paused = false;
+    plant.mode = 'manual';
+    plant.manualPump = 1;
+    plant.lowerLevel = 10;
+
+    const tripped = stepPlant(plant, 1);
+    expect(tripped.manualPump).toBeNull();
+    const refilled = advancePlantByHours({ ...tripped, lowerLevel: 60 }, 1);
+    expect(getActivePump(refilled)).toBeNull();
   });
 
   it('prepara alternância, testes e falhas com o resultado demonstrável', () => {

@@ -35,6 +35,7 @@ export const createInitialPlant = (): PlantState => ({
   mode: 'auto',
   manualPump: null,
   automaticFillRequest: false,
+  lowerLockout: false,
   virtualHours: 0,
   // A restart must be safe to inspect before time starts advancing again.
   paused: true,
@@ -54,6 +55,7 @@ export type DemonstrationScenario =
   | 'filling'
   | 'draining'
   | 'low-water'
+  | 'lower-recovery'
   | 'weekly-alternation'
   | 'test-1'
   | 'test-2'
@@ -72,13 +74,15 @@ const CLOCK_STEP_HOURS = 1 / 60;
 export const getWeeklyLeadPump = (virtualHours: number): PumpId => Math.floor(virtualHours / 168) % 2 === 0 ? 1 : 2;
 export const getActivePump = (plant: PlantState): PumpId | null =>
   plant.pumps[1].running ? 1 : plant.pumps[2].running ? 2 : null;
+export const isLowerLocked = (plant: PlantState) =>
+  Boolean(plant.lowerLockout) || plant.lowerLevel <= plant.settings.lowerBlockLevel;
 
 function isPumpEligible(pump: PumpState) {
   return pump.available && !pump.startFailure && !(pump.noFlow && pump.noFlowHours >= NO_FLOW_TIMEOUT_HOURS);
 }
 
 function isSafeToPump(plant: PlantState) {
-  return plant.lowerLevel > plant.settings.lowerBlockLevel && plant.upperLevel < plant.settings.upperAlarmLevel;
+  return !isLowerLocked(plant) && plant.upperLevel < plant.settings.upperAlarmLevel;
 }
 
 function isTestSafe(plant: PlantState, pump: PumpId) {
@@ -155,13 +159,18 @@ function stepPlantByHours(previous: PlantState, dtHours: number): PlantState {
   const settings = previous.settings;
   const virtualHours = previous.virtualHours + dtHours;
 
+  let lowerLockout = Boolean(previous.lowerLockout);
+  if (previous.lowerLevel <= settings.lowerBlockLevel) lowerLockout = true;
+  else if (previous.lowerLevel >= settings.lowerRecoveryLevel) lowerLockout = false;
+
   let automaticFillRequest = previous.automaticFillRequest;
   if (previous.upperLevel <= settings.startUpperLevel) automaticFillRequest = true;
   if (previous.upperLevel >= settings.stopUpperLevel) automaticFillRequest = false;
-  if (previous.lowerLevel <= settings.lowerBlockLevel) automaticFillRequest = false;
-  if (previous.lowerLevel >= settings.lowerRecoveryLevel && previous.upperLevel <= settings.startUpperLevel) automaticFillRequest = true;
+  if (lowerLockout) automaticFillRequest = false;
 
-  const base: PlantState = { ...previous, virtualHours, automaticFillRequest };
+  const base: PlantState = { ...previous, virtualHours, automaticFillRequest, lowerLockout };
+  // O comando manual não pode ser retomado automaticamente após um bloqueio.
+  if (base.mode === 'manual' && base.manualPump !== null && !isSafeToPump(base)) base.manualPump = null;
   let activeTest = base.activeTest;
   let testResults = base.testResults;
   let restoredSpeed: number | null = null;
@@ -274,7 +283,7 @@ export function advancePlantByHours(previous: PlantState, hours: number): PlantS
 
 /**
  * Returns a clean, paused and repeatable starting point for each item in the
- * demonstration.  Scenarios deliberately begin from a fresh plant so one
+ * demonstration. Scenarios deliberately begin from a fresh plant so one
  * demonstration never leaks a fault or a manual command into the next one.
  */
 export function createDemonstrationScenario(scenario: DemonstrationScenario): PlantState {
@@ -295,15 +304,24 @@ export function createDemonstrationScenario(scenario: DemonstrationScenario): Pl
       plant.settings.consumptionFlow = 2_000;
       return startAndPause(1);
     case 'low-water':
-      // The lower reservoir starts safely above the interlock, then falls
-      // during recalque until the protective interlock stops the pump.
+      // O processo fica ao vivo: a bomba parte e o bloqueio atua em cerca de
+      // dez minutos simulados, sem eliminar a reposição natural do RI.
       plant.upperLevel = 29;
-      plant.lowerLevel = 16;
-      plant.settings.incomingFlow = 0;
-      return startAndPause(0.25);
+      plant.lowerLevel = plant.settings.lowerBlockLevel + 0.7;
+      plant.settings.speed = 60;
+      return { ...startAndPause(), paused: false };
+    case 'lower-recovery':
+      // Demonstra a histerese: a proteção permanece até o RI atingir 25%,
+      // quando a demanda pendente pode religar a bomba automaticamente.
+      plant.upperLevel = 29;
+      plant.lowerLevel = plant.settings.lowerBlockLevel - 0.5;
+      plant.lowerLockout = true;
+      plant.settings.consumptionFlow = 300;
+      plant.settings.speed = 3600;
+      return { ...startAndPause(), paused: false };
     case 'weekly-alternation':
-      // Crossing 168 h switches the weekly lead.  The demand below is created
-      // afterwards so B2 visibly performs the next pumping cycle.
+      // The reducer advances the active plant for this interactive command.
+      // This standalone scenario remains useful for isolated demonstrations.
       plant.virtualHours = 168;
       plant.nextScheduledTestAt = 336;
       plant.upperLevel = 29;
@@ -345,8 +363,8 @@ export function createDemonstrationScenario(scenario: DemonstrationScenario): Pl
 export function getAlarms(plant: PlantState): Alarm[] {
   const alarms: Alarm[] = [];
   const active = getActivePump(plant);
-  if (plant.lowerLevel <= plant.settings.lowerBlockLevel) {
-    alarms.push({ id: 'low-lower', title: 'Reservatório inferior baixo', detail: 'Bombeamento bloqueado para proteger as bombas.', severity: 'critical' });
+  if (isLowerLocked(plant)) {
+    alarms.push({ id: 'low-lower', title: 'Reservatório inferior baixo', detail: `Bombeamento bloqueado até o inferior recuperar ${plant.settings.lowerRecoveryLevel}%.`, severity: 'critical' });
   }
   if (plant.upperLevel >= plant.settings.upperAlarmLevel) {
     alarms.push({ id: 'high-upper', title: 'Nível superior crítico', detail: 'Risco de transbordamento no reservatório superior.', severity: 'critical' });

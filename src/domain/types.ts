@@ -49,6 +49,8 @@ export interface PlantState {
   mode: OperationMode;
   manualPump: PumpId | null;
   automaticFillRequest: boolean;
+  /** Histerese do RI: trava em nível crítico e libera somente na recuperação. */
+  lowerLockout?: boolean;
   virtualHours: number;
   paused: boolean;
   pumps: Record<PumpId, PumpState>;

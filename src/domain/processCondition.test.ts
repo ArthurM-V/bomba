@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDemonstrationScenario, createInitialPlant, getAlarms, stepPlant } from './simulator';
+import { advancePlantByHours, createDemonstrationScenario, createInitialPlant, getAlarms, stepPlant } from './simulator';
 import { getProcessCondition } from './processCondition';
 
 describe('condição do processo', () => {
@@ -32,7 +32,7 @@ describe('condição do processo', () => {
 
   it('identifica teste em andamento, bloqueio e resumo remoto sem reconhecimento', () => {
     const testing = createDemonstrationScenario('test-1');
-    const lowWater = createDemonstrationScenario('low-water');
+    const lowWater = advancePlantByHours(createDemonstrationScenario('low-water'), 0.25);
     const remote = createInitialPlant();
     remote.lowerLevel = 10;
 

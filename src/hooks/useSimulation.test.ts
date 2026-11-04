@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDemonstrationScenario, createInitialPlant, getAlarms, stepPlant } from '../domain/simulator';
+import { createDemonstrationScenario, createInitialPlant, getAlarms, getWeeklyLeadPump, stepPlant } from '../domain/simulator';
 import { simulationReducer } from './useSimulation';
 
 describe('estado da simulação', () => {
@@ -31,5 +31,26 @@ describe('estado da simulação', () => {
     expect(restored.pumps[1]).toMatchObject({ available: true, startFailure: false, noFlow: false, noFlowHours: 0 });
     expect(restored.testResults[0].restoredAtVirtualHour).toBe(restored.virtualHours);
     expect(getAlarms(restored).map((alarm) => alarm.id)).not.toContain('test-failed-1');
+  });
+
+  it('avança uma semana sem reiniciar a operação ao solicitar a alternância', () => {
+    const plant = createInitialPlant();
+    plant.paused = false;
+    plant.pumps[1].runHours = 42;
+    plant.pumps[1].starts = 7;
+    plant.pumps[2].runHours = 31;
+    plant.pumps[2].starts = 5;
+    plant.history = [{ virtualHour: 0, lowerLevel: plant.lowerLevel, upperLevel: plant.upperLevel, activePump: null, pump1RunHours: 42, pump1Starts: 7, pump2RunHours: 31, pump2Starts: 5, alarmIds: [] }];
+
+    const alternated = simulationReducer(plant, { type: 'run-scenario', scenario: 'weekly-alternation' });
+
+    expect(alternated.paused).toBe(false);
+    expect(alternated.virtualHours).toBeCloseTo(168, 8);
+    expect(getWeeklyLeadPump(alternated.virtualHours)).toBe(2);
+    expect(alternated.pumps[1].runHours).toBeGreaterThanOrEqual(42);
+    expect(alternated.pumps[1].starts).toBeGreaterThanOrEqual(7);
+    expect(alternated.pumps[2].runHours).toBeGreaterThanOrEqual(31);
+    expect(alternated.pumps[2].starts).toBeGreaterThanOrEqual(5);
+    expect(alternated.history.length).toBeGreaterThan(plant.history.length);
   });
 });

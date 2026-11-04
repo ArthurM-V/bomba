@@ -11,7 +11,7 @@ Entregar um painel SCADA demonstrável inteiramente no navegador. Esta versão n
 - IndexedDB para manter a última simulação e o histórico resumido no navegador.
 - Build estático preparado para Vercel (`vercel.json`).
 
-IndexedDB foi escolhido para a primeira versão porque é persistente no navegador, não exige credenciais e permite demonstrar o comportamento completo sem infraestrutura externa. A camada `services/localStore.ts` é isolada: ela será substituída por um adaptador HTTP para Node.js/Express numa etapa futura, sem alterar o núcleo do simulador.
+IndexedDB foi escolhido para a primeira versão porque é persistente no navegador, não exige credenciais e permite demonstrar o comportamento completo sem infraestrutura externa. A camada `services/localStore.ts` é isolada do núcleo do simulador. A integração remota atual usa serviços próprios para Supabase; outros adaptadores HTTP podem ser adicionados ou substituídos sem alterar a lógica de domínio.
 
 ## Escopo implementado
 
@@ -69,6 +69,13 @@ HTTP 405 (método GET rejeitado pela rota POST, confirmando a publicação) e
 HTTP 200. O certificado raiz TLS da cadeia apresentada pelo domínio configurado
 foi incluído no `wokwi/secrets.h` local. Falta executar o firmware no Wokwi e
 registrar a primeira telemetria e o primeiro comando remoto de ponta a ponta.
+
+### Verificação local — 02/11/2026
+
+Na cópia atual do repositório, `npm test` concluiu com **33 testes
+aprovados em 7 arquivos** e `npm run build` foi concluído sem erros. Essa
+validação confirma o simulador e a interface local; não substitui o ensaio
+remoto ponta a ponta, que permanece pendente.
 
 ## Proposta de e-mail e acesso remoto
 

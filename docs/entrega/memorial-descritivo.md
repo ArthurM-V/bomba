@@ -8,6 +8,11 @@ O painel React executa um simulador hidráulico local. ESP32/Wokwi e Supabase es
 
 O painel apresenta níveis, vazões, estados das bombas, relés, contatores, horímetros, partidas, alarmes, tendências, histórico e relatório. A versão local mantém o estado no IndexedDB do navegador.
 
+Em 02/11/2026, a versão local foi validada por **33 testes automatizados em 7
+arquivos** e por build de produção sem erros. Essa evidência cobre o software
+local; a telemetria e os comandos remotos continuam pendentes de ensaio ponta a
+ponta com Wokwi/ESP32 e Supabase.
+
 ## Sequência automática
 
 1. O simulador calcula entrada no RI, consumo do RS e transferência por recalque.

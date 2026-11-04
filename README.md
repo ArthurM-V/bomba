@@ -42,6 +42,9 @@ do dispositivo.
 - Exportação CSV e impressão/salvamento como PDF pelo navegador.
 - Roteiro e registro dos cenários obrigatórios em
   [docs/roteiro-testes.md](docs/roteiro-testes.md).
+- Validação local em 02/11/2026: `npm test` com **33 testes aprovados em 7
+  arquivos** e `npm run build` concluído sem erros. O ensaio remoto
+  ESP32/Wokwi/Supabase continua pendente.
 
 ## Documentação da entrega
 
@@ -50,3 +53,4 @@ do dispositivo.
 - [Diagramas](docs/entrega/diagramas.md)
 - [Lista de entradas e saídas](docs/entrega/lista-io.md)
 - [Relatório de testes](docs/entrega/relatorio-testes.md)
+- [Handover técnico](docs/entrega/handover-tecnico.md)

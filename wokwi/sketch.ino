@@ -2,6 +2,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <esp_system.h>
+#include <time.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -71,6 +72,9 @@ constexpr float TEST_DURATION_H = 15.0F / 60.0F;
 constexpr unsigned long TELEMETRY_INTERVAL_MS = 5000;
 constexpr unsigned long COMMAND_POLL_INTERVAL_MS = 3000;
 constexpr unsigned long DISPLAY_INTERVAL_MS = 250;
+constexpr unsigned long CLOCK_SYNC_RETRY_MS = 30000;
+constexpr char NTP_SERVER_PRIMARY[] = "time.google.com";
+constexpr char NTP_SERVER_SECONDARY[] = "pool.ntp.org";
 
 enum class OperationMode : uint8_t { Auto, Manual };
 
@@ -110,11 +114,14 @@ PlantState plant;
 
 bool previousButtonState[8] = {false};
 bool telemetryPending = true;
+bool telemetryRetryPending = false;
 unsigned long lastLoopMs = 0;
 unsigned long lastTelemetryMs = 0;
 unsigned long lastCommandPollMs = 0;
 unsigned long lastDisplayMs = 0;
+unsigned long lastClockSyncAttemptMs = 0;
 bool telemetryConfigurationWarningSent = false;
+bool clockSynchronized = false;
 String telemetryBootId;
 uint32_t telemetrySequence = 0;
 String lastExecutedCommandId;
@@ -502,7 +509,11 @@ String buildTelemetryPayload(uint32_t eventSequence) {
 
 void sendTelemetryIfDue() {
   const bool due = millis() - lastTelemetryMs >= TELEMETRY_INTERVAL_MS;
-  if (!due && !telemetryPending) return;
+  // Events are sent without waiting for the next interval. A failed request,
+  // however, must wait for the interval before retrying; otherwise a transient
+  // connection loss creates a tight HTTPS loop that starves command polling.
+  const bool eventPending = telemetryPending && !telemetryRetryPending;
+  if (!due && !eventPending) return;
   lastTelemetryMs = millis();
 
   if (!isTelemetryConfigured()) {
@@ -512,11 +523,20 @@ void sendTelemetryIfDue() {
       telemetryConfigurationWarningSent = true;
     }
     telemetryPending = false;
+    telemetryRetryPending = false;
     return;
   }
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Telemetria adiada: Wi-Fi desconectado.");
+    telemetryPending = true;
+    telemetryRetryPending = true;
+    return;
+  }
+
+  if (!clockSynchronized) {
+    telemetryPending = true;
+    telemetryRetryPending = true;
     return;
   }
 
@@ -525,6 +545,8 @@ void sendTelemetryIfDue() {
   HTTPClient http;
   if (!http.begin(secureClient, API_TELEMETRY_URL)) {
     Serial.println("Falha ao iniciar cliente HTTPS.");
+    telemetryPending = true;
+    telemetryRetryPending = true;
     return;
   }
 
@@ -534,6 +556,7 @@ void sendTelemetryIfDue() {
   Serial.printf("HTTPS POST /telemetry: %d\n", statusCode);
   http.end();
   telemetryPending = statusCode < 200 || statusCode >= 300;
+  telemetryRetryPending = telemetryPending;
   if (!telemetryPending) telemetrySequence++;
 }
 
@@ -634,7 +657,7 @@ bool executeRemoteCommand(JsonObject command, String& result) {
 }
 
 void pollRemoteCommandsIfDue() {
-  if (!isRemoteCommandsConfigured() || WiFi.status() != WL_CONNECTED) return;
+  if (!isRemoteCommandsConfigured() || WiFi.status() != WL_CONNECTED || !clockSynchronized) return;
   if (millis() - lastCommandPollMs < COMMAND_POLL_INTERVAL_MS) return;
   lastCommandPollMs = millis();
 
@@ -720,6 +743,36 @@ void connectWifi() {
   }
 }
 
+bool synchronizeClock() {
+  if (WiFi.status() != WL_CONNECTED) return false;
+
+  lastClockSyncAttemptMs = millis();
+  configTime(0, 0, NTP_SERVER_PRIMARY, NTP_SERVER_SECONDARY);
+  tm timeInfo;
+  if (!getLocalTime(&timeInfo, 10000)) {
+    Serial.println("NTP indisponivel; requisicoes HTTPS aguardam relogio valido.");
+    return false;
+  }
+
+  clockSynchronized = true;
+  Serial.printf(
+    "Relogio NTP sincronizado: %04d-%02d-%02d %02d:%02d:%02d UTC\n",
+    timeInfo.tm_year + 1900,
+    timeInfo.tm_mon + 1,
+    timeInfo.tm_mday,
+    timeInfo.tm_hour,
+    timeInfo.tm_min,
+    timeInfo.tm_sec
+  );
+  return true;
+}
+
+void synchronizeClockIfNeeded() {
+  if (clockSynchronized || WiFi.status() != WL_CONNECTED) return;
+  if (millis() - lastClockSyncAttemptMs < CLOCK_SYNC_RETRY_MS) return;
+  synchronizeClock();
+}
+
 void setup() {
   Serial.begin(115200);
   telemetryBootId = createTelemetryBootId();
@@ -753,6 +806,7 @@ void setup() {
   }
 
   connectWifi();
+  synchronizeClock();
   lastLoopMs = millis();
   logEvent("Controlador iniciado");
 }
@@ -763,6 +817,7 @@ void loop() {
   lastLoopMs = now;
 
   handleInputs();
+  synchronizeClockIfNeeded();
   pollRemoteCommandsIfDue();
   updateControl(dtHours);
   updateOutputs();

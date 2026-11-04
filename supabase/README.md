@@ -82,3 +82,13 @@ sistema passar a operar continuamente.
 Para desenvolvimento local, copie `supabase/functions/.env.example` para
 `supabase/functions/.env` e inicie a pilha com a CLI. Esse arquivo real fica
 ignorado pelo Git.
+
+## Estado de validacao
+
+Em 01/11/2026, o endpoint de autenticacao do projeto respondeu HTTP 200, a
+funcao `telemetry` respondeu HTTP 405 a uma consulta GET (comportamento
+esperado para a rota POST) e `device-commands` respondeu HTTP 200. Em
+02/11/2026, o painel local concluiu 33 testes automatizados em 7 arquivos e o
+build de producao sem erros. Ainda falta executar o firmware no Wokwi/ESP32 e
+registrar a primeira telemetria e o primeiro comando remoto confirmados de
+ponta a ponta.

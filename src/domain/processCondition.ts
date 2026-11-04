@@ -1,4 +1,4 @@
-import { getActivePump, getWeeklyLeadPump } from './simulator';
+import { getActivePump, getWeeklyLeadPump, isLowerLocked } from './simulator';
 import type { Alarm, AlarmRecord, PlantState, PumpId } from './types';
 
 export type ConditionLevel = 'normal' | 'warning' | 'critical';
@@ -46,8 +46,8 @@ export function getProcessCondition(
   const top = active[0];
   const more = active.length > 1 ? ' (+' + (active.length - 1) + ' ativo(s))' : '';
 
-  if (plant.lowerLevel <= settings.lowerBlockLevel) {
-    return result('critical', 'Recalque bloqueado', 'Reservatório inferior em ' + plant.lowerLevel.toFixed(1) + '% (bloqueio em ' + settings.lowerBlockLevel + '%). Bombas protegidas.');
+  if (isLowerLocked(plant)) {
+    return result('critical', 'Recalque bloqueado', 'Reservatório inferior em ' + plant.lowerLevel.toFixed(1) + '% (bloqueio até recuperar ' + settings.lowerRecoveryLevel + '%). Bombas protegidas.');
   }
   if (plant.upperLevel >= settings.upperAlarmLevel) {
     return result('critical', 'Risco de transbordamento', 'Reservatório superior em ' + plant.upperLevel.toFixed(1) + '% (alarme em ' + settings.upperAlarmLevel + '%). Recalque bloqueado.');

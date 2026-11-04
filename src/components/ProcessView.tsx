@@ -1,4 +1,4 @@
-import { getActivePump, getWeeklyLeadPump } from '../domain/simulator';
+import { getActivePump, getWeeklyLeadPump, isLowerLocked } from '../domain/simulator';
 import type { PlantState, PumpId } from '../domain/types';
 import { ReservoirCard } from './ReservoirCard';
 
@@ -34,10 +34,10 @@ export function ProcessView({ plant }: { plant: PlantState }) {
   const upperLow = plant.upperLevel <= plant.settings.startUpperLevel;
   const upperHigh = plant.upperLevel >= plant.settings.stopUpperLevel;
   const lowerLow = plant.lowerLevel <= plant.settings.lowerRecoveryLevel;
-  const lowerBlocked = plant.lowerLevel <= plant.settings.lowerBlockLevel;
+  const lowerBlocked = isLowerLocked(plant);
   const signals: Signal[] = [
     { label: 'NS superior', value: upperLow ? 'pedido de partida' : upperHigh ? 'parada por nível' : 'normal', active: upperLow || upperHigh },
-    { label: 'NI inferior', value: lowerBlocked ? 'bloqueio ativo' : lowerLow ? 'abaixo da recuperação' : 'seguro', active: lowerLow, critical: lowerBlocked },
+    { label: 'NI inferior', value: lowerBlocked ? `bloqueio ativo · retorno em ${plant.settings.lowerRecoveryLevel}%` : lowerLow ? 'abaixo da recuperação' : 'seguro', active: lowerLow || lowerBlocked, critical: lowerBlocked },
   ];
 
   return (

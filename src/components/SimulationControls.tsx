@@ -10,6 +10,7 @@ const scenarios: ScenarioButton[] = [
   { id: 'filling', label: 'Enchimento', note: 'Bomba principal em recalque' },
   { id: 'draining', label: 'Esvaziamento', note: 'Consumo predial em curso' },
   { id: 'low-water', label: 'Falta de água', note: 'Proteção do reservatório inferior' },
+  { id: 'lower-recovery', label: 'Retorno seguro', note: 'RI recupera e o recalque é liberado' },
   { id: 'weekly-alternation', label: 'Alternância +1 semana', note: 'Próxima demanda com a reserva' },
   { id: 'test-1', label: 'Testar B1', note: 'Teste individual pronto' },
   { id: 'test-2', label: 'Testar B2', note: 'Teste individual pronto' },

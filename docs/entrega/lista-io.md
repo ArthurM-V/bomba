@@ -28,3 +28,7 @@ Referência: [`wokwi/sketch.ino`](../../wokwi/sketch.ino) e [`wokwi/diagram.json
 ## Tags de supervisão
 
 `RI_NIVEL`, `RS_NIVEL`, `B1_RUN`, `B2_RUN`, `B1_STARTS`, `B2_STARTS`, `BOMBA_PRINCIPAL` e `ALARMES_ATIVOS` são as tags usadas pelo painel para visualização, histórico e relatório.
+
+As GPIOs e tags desta lista descrevem o protótipo Wokwi e o contrato de
+supervisão. Não representam uma instalação de campo homologada; a validação
+remota com ESP32/Wokwi e Supabase permanece pendente.

@@ -51,7 +51,10 @@ flowchart LR
   EMAIL[Serviço de e-mail] -. relatório agendado proposto .-> API
 ```
 
-O modo local está implementado. O caminho remoto depende de publicação do Supabase, credenciais e validação do ESP32/Wokwi.
+O modo local está implementado e foi validado em 02/11/2026 com 33 testes em
+7 arquivos e build de produção sem erros. As rotas Supabase foram verificadas
+em 01/11/2026; o caminho remoto ainda depende de credenciais e da validação
+ponta a ponta do ESP32/Wokwi.
 
 ## Referência de ligação do protótipo
 

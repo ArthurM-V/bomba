@@ -11,6 +11,7 @@ de infraestrutura externa ou ainda é uma evolução proposta.
 | Alarmes com ocorrência, normalização e reconhecimento | Implementado localmente | Aba **Alarmes** |
 | Tendências, histórico, CSV e impressão/salvamento em PDF | Implementado localmente | Aba **Histórico e relatório** |
 | Persistência do simulador | Implementada com IndexedDB | Funciona no navegador e offline |
+| Validação do software local | 33 testes em 7 arquivos e build de produção aprovados em 02/11/2026 | `npm test` e `npm run build` |
 | Leitura de telemetria e comandos remotos | Implementado no código; requer Supabase, usuário operador e ESP32 configurados | Aba **Conexão remota** |
 | Continuidade após queda de rede | Implementada no painel | Falha remota devolve a interface ao simulador local |
 | Firmware ESP32/Wokwi e Edge Functions | Implementados no repositório; ensaio de ponta a ponta pendente | Ver `wokwi/` e `supabase/` |
@@ -25,3 +26,8 @@ de infraestrutura externa ou ainda é uma evolução proposta.
   conexão requer publicação e credenciais externas.
 - **Falha remota:** o painel não apresenta telemetria antiga como se estivesse
   ativa; ele retorna à visualização e aos controles do simulador local.
+
+O endpoint de autenticação e as Edge Functions foram consultados com sucesso em
+01/11/2026, conforme o plano técnico. Isso comprova a disponibilidade então
+observada das rotas, mas não substitui telemetria nem comando remoto executados
+de ponta a ponta, que permanecem pendentes.
